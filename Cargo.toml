@@ -1,0 +1,14 @@
+[package]
+name = "ssps"
+version = "0.1.0"
+edition = "2021"
+description = "Read an OSM .pbf and run Dijkstra from a given node id to all nodes (distance-only)."
+
+[dependencies]
+osmpbfreader = "0.16"
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"
+csv = "1.3"
+fnv = "1.0"
+medians = "3.0.12"
+hashbrown = "0.15.5"
