@@ -1,4 +1,3 @@
-
 /// Great-circle distance using the haversine formula.
 /// Input lat/lon in degrees. Output in meters.
 pub fn haversine_meters(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {

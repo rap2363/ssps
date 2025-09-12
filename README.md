@@ -29,8 +29,8 @@ Average Runtimes:
 
 |   Graph    | Dijkstra's  | BMSSP| Slowdown (x)
 |-------------|-------------|------------- | ------------- | 
-| D.C.    | ~0.06s  | ~0.38s  | ~*6.3x*
-| NorCal | ~7s | ~40s  | ~*5.7x* |
+| D.C.    | ~0.06s  | ~0.19s  | ~*3x*
+| NorCal | ~7s | ~28s  | ~*4x* |
 
 ## Improvements to be Made
 

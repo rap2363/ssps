@@ -86,7 +86,7 @@ pub struct BlockList {
     B: Cost,
     prepend_blocks: VecDeque<Block>,
     insert_blocks: VecDeque<Block>,
-    cost_map: HashMap<usize, BlockLocation>, // map of node ids to existing locations.
+    cost_map: HashMap<NodeId, BlockLocation>, // map of node ids to existing locations.
     len: usize,
 }
 
@@ -104,13 +104,10 @@ impl BlockList {
 
     pub fn len(self: &Self) -> usize {
         self.cost_map.len()
-        // self.len
     }
 
     pub fn is_empty(self: &Self) -> bool {
-        self.cost_map.is_empty()
-        // self.len() == 0
-    }
+        self.cost_map.is_empty()    }
 
     fn remove_from_prepend_list(self: &mut Self, node_id: NodeId, cost: Cost) {
         let prepend_idx = self.prepend_blocks.partition_point(|block| block.upper_bound < cost);
