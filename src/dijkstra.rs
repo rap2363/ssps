@@ -1,4 +1,3 @@
-
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
@@ -14,7 +13,10 @@ impl Eq for State {}
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
         // reverse ordering for min-heap
-        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -31,7 +33,10 @@ pub fn dijkstra_all(adj: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
     let mut heap = BinaryHeap::new();
 
     dist[start] = 0.0;
-    heap.push(State { cost: 0.0, node_id: start });
+    heap.push(State {
+        cost: 0.0,
+        node_id: start,
+    });
 
     while let Some(State { cost, node_id }) = heap.pop() {
         if cost > dist[node_id] {
@@ -41,7 +46,10 @@ pub fn dijkstra_all(adj: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
             let next_cost = cost + w;
             if next_cost < dist[next] {
                 dist[next] = next_cost;
-                heap.push(State { cost: next_cost, node_id: next });
+                heap.push(State {
+                    cost: next_cost,
+                    node_id: next,
+                });
             }
         }
     }

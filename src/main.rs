@@ -1,16 +1,15 @@
-
-use std::collections::HashSet;
-use std::fs::File;
 use anyhow::{Context, Result};
 use clap::Parser;
 use csv::Writer;
 use fnv::FnvHashMap;
-use osmpbfreader::{OsmObj, OsmPbfReader, NodeId, WayId, Tags};
+use osmpbfreader::{NodeId, OsmObj, OsmPbfReader, Tags, WayId};
+use std::collections::HashSet;
+use std::fs::File;
 
-mod geo;
-mod dijkstra;
-mod bmssp;
 mod block_data_structure;
+mod bmssp;
+mod dijkstra;
+mod geo;
 mod pq_block_list;
 
 #[derive(Parser, Debug)]
@@ -67,7 +66,11 @@ fn is_oneway(tags: &Tags) -> Option<i8> {
             _ => {}
         }
     }
-    if tags.get("junction").map(|v| v == "roundabout").unwrap_or(false) {
+    if tags
+        .get("junction")
+        .map(|v| v == "roundabout")
+        .unwrap_or(false)
+    {
         return Some(1);
     }
     None
@@ -75,7 +78,7 @@ fn is_oneway(tags: &Tags) -> Option<i8> {
 
 enum SspAlgorithm {
     Bmssp,
-    Dijkstra
+    Dijkstra,
 }
 
 impl SspAlgorithm {
@@ -115,12 +118,20 @@ fn main() -> Result<()> {
                 for nid in &w.nodes {
                     needed_nodes.insert(*nid);
                 }
-                ways.push(WayLite { id: w.id, nodes: w.nodes.clone(), tags: w.tags.clone() });
+                ways.push(WayLite {
+                    id: w.id,
+                    nodes: w.nodes.clone(),
+                    tags: w.tags.clone(),
+                });
             }
         }
     }
 
-    println!("Collected {} routable ways; {} unique node refs", ways.len(), needed_nodes.len());
+    println!(
+        "Collected {} routable ways; {} unique node refs",
+        ways.len(),
+        needed_nodes.len()
+    );
 
     // Pass 2: read coordinates for needed nodes
     let file2 = File::open(&cli.pbf).with_context(|| format!("reopening {}", &cli.pbf))?;
@@ -136,7 +147,10 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("Loaded coordinates for {} nodes actually present", coords.len());
+    println!(
+        "Loaded coordinates for {} nodes actually present",
+        coords.len()
+    );
 
     // Build index mapping and adjacency
     let mut id_to_idx: FnvHashMap<NodeId, usize> = FnvHashMap::default();
@@ -152,7 +166,9 @@ fn main() -> Result<()> {
 
     let mut edges_added: usize = 0;
     for w in &ways {
-        if w.nodes.len() < 2 { continue; }
+        if w.nodes.len() < 2 {
+            continue;
+        }
         let oneway = is_oneway(&w.tags);
         for pair in w.nodes.windows(2) {
             let (a, b) = (pair[0], pair[1]);
@@ -197,20 +213,28 @@ fn main() -> Result<()> {
     }
 
     if let Some(out_path) = cli.out {
-        let mut wtr = Writer::from_path(&out_path)
-            .with_context(|| format!("creating CSV {}", &out_path))?;
+        let mut wtr =
+            Writer::from_path(&out_path).with_context(|| format!("creating CSV {}", &out_path))?;
         wtr.write_record(["node_id", "distance_m"])?;
         let mut dist_with_idx: Vec<(usize, &f64)> = dist.iter().enumerate().collect();
         dist_with_idx.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap());
         for (idx, d) in &dist_with_idx {
             let nid = idx_to_id[*idx].0;
             if d.is_finite() || cli.include_unreachable {
-                let val = if d.is_finite() { format!("{:.6}", d) } else { String::from("inf") };
+                let val = if d.is_finite() {
+                    format!("{:.6}", d)
+                } else {
+                    String::from("inf")
+                };
                 wtr.write_record(&[nid.to_string(), val])?;
             }
         }
         wtr.flush()?;
-        println!("Wrote distances for {} nodes to {}", dist_with_idx.len(), out_path);
+        println!(
+            "Wrote distances for {} nodes to {}",
+            dist_with_idx.len(),
+            out_path
+        );
     } else {
         let reachable = dist.iter().filter(|x| x.is_finite()).count();
         println!("Nodes: {}", dist.len());
@@ -218,7 +242,9 @@ fn main() -> Result<()> {
         if reachable > 0 {
             let mut maxd = 0.0_f64;
             for d in dist.iter().copied().filter(|x| x.is_finite()) {
-                if d > maxd { maxd = d; }
+                if d > maxd {
+                    maxd = d;
+                }
             }
             println!("Max finite distance (m): {:.2}", maxd);
         }
