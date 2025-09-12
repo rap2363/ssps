@@ -1,5 +1,5 @@
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs::File;
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -49,10 +49,8 @@ struct WayLite {
 }
 
 fn is_way_routable(tags: &Tags, only_highways: bool) -> bool {
-    if only_highways {
-        if !tags.contains_key("highway") {
-            return false;
-        }
+    if only_highways && !tags.contains_key("highway") {
+        return false;
     }
     // Exclude areas and non-linear ways
     if tags.get("area").map(|v| v == "yes").unwrap_or(false) {
@@ -89,7 +87,7 @@ impl SspAlgorithm {
         }
     }
 
-    fn run(self: &Self, neighbors: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
+    fn run(&self, neighbors: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
         match self {
             SspAlgorithm::Bmssp => bmssp::bmssp_all(neighbors, start),
             SspAlgorithm::Dijkstra => dijkstra::dijkstra_all(neighbors, start),
@@ -201,7 +199,7 @@ fn main() -> Result<()> {
     if let Some(out_path) = cli.out {
         let mut wtr = Writer::from_path(&out_path)
             .with_context(|| format!("creating CSV {}", &out_path))?;
-        wtr.write_record(&["node_id", "distance_m"])?;
+        wtr.write_record(["node_id", "distance_m"])?;
         let mut dist_with_idx: Vec<(usize, &f64)> = dist.iter().enumerate().collect();
         dist_with_idx.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap());
         for (idx, d) in &dist_with_idx {
