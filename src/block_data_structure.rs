@@ -8,13 +8,13 @@ Insert(k, v): Update the value if the key exists in a block by first deleting it
 the key-value pair means finding the right block (O(log(N/M)), and then inserting it in the block while potentially
 updating its upper bound.
 Batch-Prepend(L): Adds L elements to D0, assuming they are all currently cheaper than all other elements in the data structure.
-Pull: Pulls the least M costliest elements and returns the minimum upper bound after the pull. 
+Pull: Pulls the least M costliest elements and returns the minimum upper bound after the pull.
       This traverses the block lists D0 and D1 in order and pulls the number of elements needed.
 */
 
 use hashbrown::HashMap;
-use std::collections::VecDeque;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 
 pub type NodeId = usize;
 pub type Cost = f64;
@@ -107,10 +107,13 @@ impl BlockList {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.cost_map.is_empty()    }
+        self.cost_map.is_empty()
+    }
 
     fn remove_from_prepend_list(&mut self, node_id: NodeId, cost: Cost) {
-        let prepend_idx = self.prepend_blocks.partition_point(|block| block.upper_bound < cost);
+        let prepend_idx = self
+            .prepend_blocks
+            .partition_point(|block| block.upper_bound < cost);
         // This means it's not in the prepend block!
         assert_ne!(prepend_idx, self.prepend_blocks.len());
 
@@ -130,7 +133,9 @@ impl BlockList {
     }
 
     fn remove_from_insert_list(&mut self, node_id: NodeId, cost: Cost) {
-        let insert_idx = self.insert_blocks.partition_point(|block| block.upper_bound < cost);
+        let insert_idx = self
+            .insert_blocks
+            .partition_point(|block| block.upper_bound < cost);
         // This means it's not in the insert block!
         assert_ne!(insert_idx, self.insert_blocks.len());
 
@@ -159,7 +164,7 @@ impl BlockList {
                 } else {
                     false
                 }
-            },
+            }
             Some(BlockLocation::Insert(insert_cost)) => {
                 if new_cost < *insert_cost {
                     self.remove_from_insert_list(node_id, *insert_cost);
@@ -167,14 +172,19 @@ impl BlockList {
                 } else {
                     false
                 }
-            },
+            }
             _ => true, // Node isn't here, so we can add this node to the cost map.
         }
     }
 
     pub fn insert(&mut self, node_id: NodeId, cost: Cost) {
         // it should *never* be >= B for D1 inserts.
-        assert!(cost <= self.B, "inserted cost {} >= B {} into D1", cost, self.B);
+        assert!(
+            cost <= self.B,
+            "inserted cost {} >= B {} into D1",
+            cost,
+            self.B
+        );
         assert_ne!(self.insert_blocks.len(), 0);
         // First update the node if it exists.
         if !self.update(node_id, cost) {
@@ -184,21 +194,29 @@ impl BlockList {
         // Now insert it.
         self.cost_map.insert(node_id, BlockLocation::Insert(cost));
         // First find the block we want to insert into using the partition search.
-        let i = self.insert_blocks.partition_point(|block| block.upper_bound < cost);
+        let i = self
+            .insert_blocks
+            .partition_point(|block| block.upper_bound < cost);
         let block_to_add_to = &mut self.insert_blocks[i];
-        if let BlockAdditionResult::SplitBlocks(left_block, right_block) = block_to_add_to.add(node_id, cost) {
+        if let BlockAdditionResult::SplitBlocks(left_block, right_block) =
+            block_to_add_to.add(node_id, cost)
+        {
             self.insert_blocks[i] = left_block;
             self.insert_blocks.insert(i + 1, right_block);
         }
     }
 
     fn get_minimum_block(&self) -> &Block {
-        self.prepend_blocks.front().unwrap_or(self.insert_blocks.front().unwrap())
+        self.prepend_blocks
+            .front()
+            .unwrap_or(self.insert_blocks.front().unwrap())
     }
 
     fn get_minimum_upper_bound(&self) -> Cost {
         let block = self.get_minimum_block();
-        block.nodes.iter()
+        block
+            .nodes
+            .iter()
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
             .map_or(block.upper_bound, |&n| n.1)
     }
@@ -209,7 +227,8 @@ impl BlockList {
         for (node_id, cost) in &nodes_to_prepend {
             if self.update(*node_id, *cost) {
                 nodes_to_actually_prepend.push((*node_id, *cost));
-                self.cost_map.insert(*node_id, BlockLocation::Prepend(*cost));
+                self.cost_map
+                    .insert(*node_id, BlockLocation::Prepend(*cost));
             }
         }
 
@@ -221,7 +240,11 @@ impl BlockList {
         if nodes_to_actually_prepend.len() <= self.M {
             // Just add a new block in the very front.
             let upper_bound = self.get_minimum_upper_bound();
-            self.prepend_blocks.push_front(Block::from_existing(self.M, upper_bound, nodes_to_actually_prepend));
+            self.prepend_blocks.push_front(Block::from_existing(
+                self.M,
+                upper_bound,
+                nodes_to_actually_prepend,
+            ));
             return;
         }
         // Otherwise, we need to sort these nodes in reverse order and add them one by one into blocks.
@@ -230,9 +253,15 @@ impl BlockList {
         nodes_to_actually_prepend.sort_by(|&a, &b| b.1.partial_cmp(&a.1).unwrap());
         // Continually drain M elements and add into a new block until we're finished.
         while !nodes_to_actually_prepend.is_empty() {
-            let block_nodes = nodes_to_actually_prepend.drain(..(((self.M as f64) / 2.0).ceil() as usize).min(nodes_to_actually_prepend.len())).collect();
+            let block_nodes = nodes_to_actually_prepend
+                .drain(
+                    ..(((self.M as f64) / 2.0).ceil() as usize)
+                        .min(nodes_to_actually_prepend.len()),
+                )
+                .collect();
             let upper_bound = self.get_minimum_upper_bound();
-            self.prepend_blocks.push_front(Block::from_existing(self.M, upper_bound, block_nodes));
+            self.prepend_blocks
+                .push_front(Block::from_existing(self.M, upper_bound, block_nodes));
         }
     }
 
@@ -241,14 +270,18 @@ impl BlockList {
         let mut min_prepend = self.B;
         let mut min_insert = self.B;
         if let Some(block) = self.prepend_blocks.front() {
-            min_prepend = block.nodes.iter()
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
-            .map_or(block.upper_bound, |&n| n.1);
+            min_prepend = block
+                .nodes
+                .iter()
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
+                .map_or(block.upper_bound, |&n| n.1);
         }
         if let Some(block) = self.insert_blocks.front() {
-            min_insert = block.nodes.iter()
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
-            .map_or(block.upper_bound, |&n| n.1);
+            min_insert = block
+                .nodes
+                .iter()
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
+                .map_or(block.upper_bound, |&n| n.1);
         }
 
         min_prepend.min(min_insert)
@@ -289,7 +322,9 @@ impl BlockList {
         // Now we can effectively "merge" sort and pull from the appropriate list as needed.
         let mut pulled_elements = Vec::new();
 
-        while !(prepend_block_elements.is_empty() && insert_block_elements.is_empty()) && pulled_elements.len() < num_to_pull {
+        while !(prepend_block_elements.is_empty() && insert_block_elements.is_empty())
+            && pulled_elements.len() < num_to_pull
+        {
             let min_prepend_cost = prepend_block_elements.front().map_or(self.B, |&n| n.1);
             let min_insert_cost = insert_block_elements.front().map_or(self.B, |&n| n.1);
 
@@ -371,10 +406,10 @@ mod tests {
         block_list.insert(10, 10.0);
         block_list.insert(1, 1.0);
         block_list.insert(4, 4.0);
-        block_list.insert(5, 5.3);        
+        block_list.insert(5, 5.3);
         block_list.insert(7, 7.0);
         block_list.insert(5, 2.2); // Note the change.
-        block_list.insert(9, 9.0); 
+        block_list.insert(9, 9.0);
         // Sorts into blocks like:
         // [1, 3] -> [4, 5], [7, 9, 10]
         assert_eq!(block_list.insert_blocks.len(), 3);
@@ -458,5 +493,3 @@ mod tests {
         assert_eq!(block_list.is_empty(), true);
     }
 }
-
-

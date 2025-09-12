@@ -1,10 +1,10 @@
-// BMSSSP (distance-only), implemented from 
+// BMSSSP (distance-only), implemented from
 // "Breaking the Sorting Barrier for Directed Single-Source Shortest Paths"
 // (Duan, Mao, Mao, Shu, Yin, April 2025) (arXiv:2504.17033v1)
-use std::cmp;
-use hashbrown::{HashMap, HashSet};
-use std::collections::BinaryHeap;
 use crate::block_data_structure::{BlockList, PullResult};
+use hashbrown::{HashMap, HashSet};
+use std::cmp;
+use std::collections::BinaryHeap;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct State {
@@ -14,10 +14,7 @@ struct State {
 
 impl State {
     fn from(node_id: usize, cost: f64) -> Self {
-        Self {
-            node_id,
-            cost,
-        }
+        Self { node_id, cost }
     }
 }
 
@@ -27,7 +24,10 @@ impl Eq for State {}
 impl Ord for State {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         // reverse ordering for min-heap
-        other.cost.partial_cmp(&self.cost).unwrap_or(cmp::Ordering::Equal)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(cmp::Ordering::Equal)
     }
 }
 
@@ -37,9 +37,14 @@ impl PartialOrd for State {
     }
 }
 
-
 // Returns a set of pivots and set W such that d(w) < B.
-pub fn find_pivots(bound: f64, frontier: &[usize], k:usize, neighbors: &Vec<Vec<(usize, f64)>>, min_cost_map: &mut Vec<f64>) -> (Vec<usize>, Vec<usize>){
+pub fn find_pivots(
+    bound: f64,
+    frontier: &[usize],
+    k: usize,
+    neighbors: &Vec<Vec<(usize, f64)>>,
+    min_cost_map: &mut Vec<f64>,
+) -> (Vec<usize>, Vec<usize>) {
     // Build out the "lookahead" layers in our search k-times forward from the frontier.
     let mut layers = Vec::new();
     layers.push(frontier.to_vec());
@@ -99,22 +104,35 @@ pub fn find_pivots(bound: f64, frontier: &[usize], k:usize, neighbors: &Vec<Vec<
     }
 
     // Our pivots are any roots who have trees of size >= k.
-    let returned_pivots = pivots.into_iter().filter(|kv| kv.1 >= k).map(|kv| kv.0).collect();
-    (returned_pivots, layers.into_iter().flatten().collect::<Vec<_>>())
+    let returned_pivots = pivots
+        .into_iter()
+        .filter(|kv| kv.1 >= k)
+        .map(|kv| kv.0)
+        .collect();
+    (
+        returned_pivots,
+        layers.into_iter().flatten().collect::<Vec<_>>(),
+    )
 }
 
 /*
-* Runs on l=0 off a singleton. Effectively a "mini-Dijkstra's". 
+* Runs on l=0 off a singleton. Effectively a "mini-Dijkstra's".
 * One big assumption here is that node_id is closed.
 * Returns: a new boundary B' < upper_bound and a set U.
 */
-fn base_bmssp(upper_bound: f64, node_id: usize, k: usize, neighbors: &Vec<Vec<(usize, f64)>>, min_cost_map: &mut Vec<f64>) -> (f64, Vec<usize>) {
+fn base_bmssp(
+    upper_bound: f64,
+    node_id: usize,
+    k: usize,
+    neighbors: &Vec<Vec<(usize, f64)>>,
+    min_cost_map: &mut Vec<f64>,
+) -> (f64, Vec<usize>) {
     let mut u_init = Vec::new();
     let mut heap = BinaryHeap::new();
     let mut visited_set = HashSet::new();
     let mut max_cost_so_far = min_cost_map[node_id];
     heap.push(State::from(node_id, max_cost_so_far));
-    while let Some(State {node_id, cost}) = heap.pop() {
+    while let Some(State { node_id, cost }) = heap.pop() {
         if u_init.len() > k + 1 {
             break;
         }
@@ -126,7 +144,8 @@ fn base_bmssp(upper_bound: f64, node_id: usize, k: usize, neighbors: &Vec<Vec<(u
         max_cost_so_far = max_cost_so_far.max(min_cost_map[node_id]);
         for (neighbor_node_id, weight) in &neighbors[node_id] {
             let cost_to_neighbor = cost + weight;
-            if cost_to_neighbor <= min_cost_map[*neighbor_node_id] && cost_to_neighbor < upper_bound {
+            if cost_to_neighbor <= min_cost_map[*neighbor_node_id] && cost_to_neighbor < upper_bound
+            {
                 min_cost_map[*neighbor_node_id] = cost_to_neighbor;
                 heap.push(State::from(*neighbor_node_id, cost_to_neighbor));
             }
@@ -136,17 +155,31 @@ fn base_bmssp(upper_bound: f64, node_id: usize, k: usize, neighbors: &Vec<Vec<(u
     if u_init.len() <= k {
         (upper_bound, u_init)
     } else {
-        (max_cost_so_far, u_init.into_iter().filter(|node_id| min_cost_map[*node_id] < max_cost_so_far).collect())
+        (
+            max_cost_so_far,
+            u_init
+                .into_iter()
+                .filter(|node_id| min_cost_map[*node_id] < max_cost_so_far)
+                .collect(),
+        )
     }
 }
 
 /*
 * Requirements:
-* |frontier| <= 2^(l*t) ~ 4096 for the top level with 100k nodes. 
+* |frontier| <= 2^(l*t) ~ 4096 for the top level with 100k nodes.
 *
 * Returns: a new boundary B' < upper_bound and a set U.
 */
-fn bmssp_bounded(l: usize, upper_bound: f64, frontier: &Vec<usize>, k: usize, t: usize, neighbors: &Vec<Vec<(usize, f64)>>, min_cost_map: &mut Vec<f64>) -> (f64, Vec<usize>) {
+fn bmssp_bounded(
+    l: usize,
+    upper_bound: f64,
+    frontier: &Vec<usize>,
+    k: usize,
+    t: usize,
+    neighbors: &Vec<Vec<(usize, f64)>>,
+    min_cost_map: &mut Vec<f64>,
+) -> (f64, Vec<usize>) {
     if l == 0 {
         assert_eq!(frontier.len(), 1);
         return base_bmssp(upper_bound, frontier[0], k, neighbors, min_cost_map);
@@ -161,7 +194,12 @@ fn bmssp_bounded(l: usize, upper_bound: f64, frontier: &Vec<usize>, k: usize, t:
     for pivot in pivots {
         let dist = min_cost_map[pivot];
         if dist > upper_bound {
-            assert!(dist < upper_bound, "Pivot distance can't be greater than B {} >= {}", dist, upper_bound);
+            assert!(
+                dist < upper_bound,
+                "Pivot distance can't be greater than B {} >= {}",
+                dist,
+                upper_bound
+            );
         }
         block_list.insert(pivot, dist);
         min_upper_bound = min_upper_bound.min(dist);
@@ -170,7 +208,15 @@ fn bmssp_bounded(l: usize, upper_bound: f64, frontier: &Vec<usize>, k: usize, t:
     let mut u_set = Vec::new();
     while u_set.len() < max_size_u_set && !block_list.is_empty() {
         let PullResult(new_frontier, current_upper_bound) = block_list.pull();
-        let (new_upper_bound, new_uset) = bmssp_bounded(l - 1, current_upper_bound, &new_frontier, k, t, neighbors, min_cost_map);
+        let (new_upper_bound, new_uset) = bmssp_bounded(
+            l - 1,
+            current_upper_bound,
+            &new_frontier,
+            k,
+            t,
+            neighbors,
+            min_cost_map,
+        );
         min_upper_bound = new_upper_bound;
         let mut batch_prepend_elements = Vec::new();
         for &node_id in new_uset.iter() {
@@ -182,7 +228,9 @@ fn bmssp_bounded(l: usize, upper_bound: f64, frontier: &Vec<usize>, k: usize, t:
                     min_cost_map[*neighbor_node_id] = proposed_weight;
                     if current_upper_bound <= proposed_weight && proposed_weight < upper_bound {
                         block_list.insert(*neighbor_node_id, proposed_weight)
-                    } else if new_upper_bound <= proposed_weight && proposed_weight < current_upper_bound {
+                    } else if new_upper_bound <= proposed_weight
+                        && proposed_weight < current_upper_bound
+                    {
                         // Element is cheaper than anything in the block_list currently, so we can batch prepend.
                         batch_prepend_elements.push((*neighbor_node_id, proposed_weight));
                     }
@@ -223,7 +271,15 @@ pub fn bmssp_all(neighbors: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
     let mut min_cost_map = vec![f64::INFINITY; N as usize];
     min_cost_map[start] = 0.0;
     let B = f64::INFINITY;
-    let (min_upper_bound,uset) = bmssp_bounded(starting_l, B, &vec![start], k, t, neighbors, &mut min_cost_map);
+    let (min_upper_bound, uset) = bmssp_bounded(
+        starting_l,
+        B,
+        &vec![start],
+        k,
+        t,
+        neighbors,
+        &mut min_cost_map,
+    );
     min_cost_map
 }
 

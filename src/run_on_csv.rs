@@ -1,13 +1,12 @@
-
-use std::collections::{HashMap, HashSet};
 use anyhow::{Context, Result};
 use clap::Parser;
 use csv::{ReaderBuilder, Writer};
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
-mod dijkstra;
-mod bmssp;
 mod block_data_structure;
+mod bmssp;
+mod dijkstra;
 mod pq_block_list;
 
 #[derive(Parser, Debug)]
@@ -28,7 +27,7 @@ struct Cli {
 
 enum SspAlgorithm {
     Bmssp,
-    Dijkstra
+    Dijkstra,
 }
 
 impl SspAlgorithm {
@@ -50,7 +49,8 @@ impl SspAlgorithm {
 
 fn build_adjacency_list(edges: &[(usize, usize, f64)]) -> Vec<Vec<(usize, f64)>> {
     // First, determine how many nodes we have.
-    let max_node = edges.iter()
+    let max_node = edges
+        .iter()
         .map(|(u, v, _)| std::cmp::max(*u, *v))
         .max()
         .unwrap_or(0);
@@ -64,7 +64,9 @@ fn build_adjacency_list(edges: &[(usize, usize, f64)]) -> Vec<Vec<(usize, f64)>>
     adj
 }
 
-fn parse_csv_and_build_adjacency_list(path: &str) -> Result<Vec<Vec<(usize, f64)>>, Box<dyn Error>> {
+fn parse_csv_and_build_adjacency_list(
+    path: &str,
+) -> Result<Vec<Vec<(usize, f64)>>, Box<dyn Error>> {
     let mut rdr = ReaderBuilder::new()
         .has_headers(true) // important: skip header line
         .from_path(path)?;

@@ -84,5 +84,3 @@ mod tests {
         assert_eq!(upper_bound, 7.5);
     }
 }
-
-
