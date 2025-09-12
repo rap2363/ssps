@@ -11,6 +11,7 @@ mod geo;
 mod dijkstra;
 mod bmssp;
 mod block_data_structure;
+mod pq_block_list;
 
 #[derive(Parser, Debug)]
 #[command(name = "ssps")]
