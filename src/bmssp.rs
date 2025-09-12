@@ -15,8 +15,8 @@ struct State {
 impl State {
     fn from(node_id: usize, cost: f64) -> Self {
         Self {
-            node_id: node_id,
-            cost: cost,
+            node_id,
+            cost,
         }
     }
 }
@@ -39,12 +39,12 @@ impl PartialOrd for State {
 
 
 // Returns a set of pivots and set W such that d(w) < B.
-pub fn find_pivots(bound: f64, frontier: &Vec<usize>, k:usize, neighbors: &Vec<Vec<(usize, f64)>>, min_cost_map: &mut Vec<f64>) -> (Vec<usize>, Vec<usize>){
+pub fn find_pivots(bound: f64, frontier: &[usize], k:usize, neighbors: &Vec<Vec<(usize, f64)>>, min_cost_map: &mut Vec<f64>) -> (Vec<usize>, Vec<usize>){
     // Build out the "lookahead" layers in our search k-times forward from the frontier.
     let mut layers = Vec::new();
-    layers.push(frontier.iter().cloned().collect::<Vec<usize>>());
+    layers.push(frontier.to_vec());
     let mut all_layers = layers[0].clone();
-    let mut total_added = layers[0].len();
+    let total_added = layers[0].len();
     let mut bp_map = HashMap::new();
     let mut last_layer = &layers[0];
     for i in 1..=k {
@@ -70,7 +70,7 @@ pub fn find_pivots(bound: f64, frontier: &Vec<usize>, k:usize, neighbors: &Vec<V
         last_layer = &layers[i];
         // If we're doing too much work we need to exit early.
         if all_layers.len() > k * frontier.len() {
-            return (frontier.clone(), layers.into_iter().flatten().collect());
+            return (frontier.to_owned(), layers.into_iter().flatten().collect());
         }
     }
 
@@ -220,7 +220,7 @@ pub fn bmssp_all(neighbors: &Vec<Vec<(usize, f64)>>, start: usize) -> Vec<f64> {
     let t = N.log2().powf(2.0 / 3.0).floor() as usize;
     let starting_l = (N.log2() / (t as f64)).ceil() as usize;
     // Initialize min_cost_map to infinity.
-    let mut min_cost_map = vec![f64::INFINITY; (N as usize)];
+    let mut min_cost_map = vec![f64::INFINITY; N as usize];
     min_cost_map[start] = 0.0;
     let B = f64::INFINITY;
     let (min_upper_bound,uset) = bmssp_bounded(starting_l, B, &vec![start], k, t, neighbors, &mut min_cost_map);

@@ -22,37 +22,37 @@ pub struct BlockList {
 impl BlockList {
     pub fn new(M: usize, B: Cost) -> Self {
         Self {
-            M: M,
-            B: B,
+            M,
+            B,
             pq: BinaryHeapWithMap::new(),
         }
     }
 
-    pub fn len(self: &Self) -> usize {
+    pub fn len(&self) -> usize {
         self.pq.len()
     }
 
-    pub fn is_empty(self: &Self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.pq.is_empty()
     }
 
-    pub fn insert(self: &mut Self, node_id: NodeId, cost: Cost) {
+    pub fn insert(&mut self, node_id: NodeId, cost: Cost) {
         // Insert if the current cost is less than what we currently have.
         assert!(cost <= self.B, "inserted cost {} >= B {}", cost, self.B);
         self.pq.decrease_key_or_push(&node_id, cost);
     }
 
-    pub fn batch_prepend(self: &mut Self, mut nodes_to_prepend: Vec<(NodeId, Cost)>) {
+    pub fn batch_prepend(&mut self, nodes_to_prepend: Vec<(NodeId, Cost)>) {
         for (node_id, cost) in nodes_to_prepend.into_iter() {
             self.insert(node_id, cost);
         }
     }
 
-    fn get_minimum_bound(self: &Self) -> Cost {
+    fn get_minimum_bound(&self) -> Cost {
         self.pq.peek().map(|n| n.1).unwrap_or(self.B)
     }
 
-    pub fn pull(self: &mut Self) -> PullResult {
+    pub fn pull(&mut self) -> PullResult {
         // Pull M elements.
         let mut pulled_elements = Vec::new();
         for _ in 0..self.M {

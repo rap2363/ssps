@@ -48,13 +48,13 @@ impl Block {
 
     fn from_existing(M: usize, upper_bound: Cost, nodes: Vec<(NodeId, Cost)>) -> Self {
         Self {
-            nodes: nodes,
-            upper_bound: upper_bound,
+            nodes,
+            upper_bound,
             capacity: M,
         }
     }
 
-    fn add(self: &mut Self, node_id: NodeId, cost: Cost) -> BlockAdditionResult {
+    fn add(&mut self, node_id: NodeId, cost: Cost) -> BlockAdditionResult {
         if self.nodes.len() < self.capacity {
             self.nodes.push((node_id, cost));
             BlockAdditionResult::Success(self)
@@ -93,8 +93,8 @@ pub struct BlockList {
 impl BlockList {
     pub fn new(M: usize, B: Cost) -> Self {
         Self {
-            M: M,
-            B: B,
+            M,
+            B,
             prepend_blocks: VecDeque::new(),
             insert_blocks: vec![Block::new(M, B)].into(),
             cost_map: HashMap::new(),
@@ -102,20 +102,20 @@ impl BlockList {
         }
     }
 
-    pub fn len(self: &Self) -> usize {
+    pub fn len(&self) -> usize {
         self.cost_map.len()
     }
 
-    pub fn is_empty(self: &Self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.cost_map.is_empty()    }
 
-    fn remove_from_prepend_list(self: &mut Self, node_id: NodeId, cost: Cost) {
+    fn remove_from_prepend_list(&mut self, node_id: NodeId, cost: Cost) {
         let prepend_idx = self.prepend_blocks.partition_point(|block| block.upper_bound < cost);
         // This means it's not in the prepend block!
         assert_ne!(prepend_idx, self.prepend_blocks.len());
 
         // Now remove the node and its old cost from the prepend block.
-        let mut block = &mut self.prepend_blocks[prepend_idx];
+        let block = &mut self.prepend_blocks[prepend_idx];
         if let Some(i) = block.nodes.iter().position(|&n| n.0 == node_id) {
             block.nodes.swap_remove(i);
         }
@@ -129,13 +129,13 @@ impl BlockList {
         }
     }
 
-    fn remove_from_insert_list(self: &mut Self, node_id: NodeId, cost: Cost) {
+    fn remove_from_insert_list(&mut self, node_id: NodeId, cost: Cost) {
         let insert_idx = self.insert_blocks.partition_point(|block| block.upper_bound < cost);
         // This means it's not in the insert block!
         assert_ne!(insert_idx, self.insert_blocks.len());
 
         // Now remove the node and its old cost from the prepend block.
-        let mut block = &mut self.insert_blocks[insert_idx];
+        let block = &mut self.insert_blocks[insert_idx];
         if let Some(i) = block.nodes.iter().position(|&n| n.0 == node_id) {
             block.nodes.swap_remove(i);
         }
@@ -150,7 +150,7 @@ impl BlockList {
         }
     }
 
-    fn update(self: &mut Self, node_id: NodeId, new_cost: Cost) -> bool {
+    fn update(&mut self, node_id: NodeId, new_cost: Cost) -> bool {
         match self.cost_map.get(&node_id) {
             Some(BlockLocation::Prepend(prepend_cost)) => {
                 if new_cost < *prepend_cost {
@@ -172,7 +172,7 @@ impl BlockList {
         }
     }
 
-    pub fn insert(self: &mut Self, node_id: NodeId, cost: Cost) {
+    pub fn insert(&mut self, node_id: NodeId, cost: Cost) {
         // it should *never* be >= B for D1 inserts.
         assert!(cost <= self.B, "inserted cost {} >= B {} into D1", cost, self.B);
         assert_ne!(self.insert_blocks.len(), 0);
@@ -186,27 +186,24 @@ impl BlockList {
         // First find the block we want to insert into using the partition search.
         let i = self.insert_blocks.partition_point(|block| block.upper_bound < cost);
         let block_to_add_to = &mut self.insert_blocks[i];
-        match block_to_add_to.add(node_id, cost) {
-            BlockAdditionResult::SplitBlocks(left_block, right_block) => {
-                self.insert_blocks[i] = left_block;
-                self.insert_blocks.insert(i + 1, right_block);
-            },
-            _ => {}
+        if let BlockAdditionResult::SplitBlocks(left_block, right_block) = block_to_add_to.add(node_id, cost) {
+            self.insert_blocks[i] = left_block;
+            self.insert_blocks.insert(i + 1, right_block);
         }
     }
 
-    fn get_minimum_block(self: &Self) -> &Block {
+    fn get_minimum_block(&self) -> &Block {
         self.prepend_blocks.front().unwrap_or(self.insert_blocks.front().unwrap())
     }
 
-    fn get_minimum_upper_bound(self: &Self) -> Cost {
+    fn get_minimum_upper_bound(&self) -> Cost {
         let block = self.get_minimum_block();
         block.nodes.iter()
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Less))
             .map_or(block.upper_bound, |&n| n.1)
     }
 
-    pub fn batch_prepend(self: &mut Self, mut nodes_to_prepend: Vec<(NodeId, Cost)>) {
+    pub fn batch_prepend(&mut self, nodes_to_prepend: Vec<(NodeId, Cost)>) {
         // Remove any nodes that we might replace.
         let mut nodes_to_actually_prepend = Vec::new();
         for (node_id, cost) in &nodes_to_prepend {
@@ -240,7 +237,7 @@ impl BlockList {
     }
 
     // Returns the minimum cost across both block lists.
-    fn get_minimum_cost(self: &Self) -> Cost {
+    fn get_minimum_cost(&self) -> Cost {
         let mut min_prepend = self.B;
         let mut min_insert = self.B;
         if let Some(block) = self.prepend_blocks.front() {
@@ -257,14 +254,14 @@ impl BlockList {
         min_prepend.min(min_insert)
     }
 
-    fn pull_elements(self: &mut Self, num_to_pull: usize) -> Vec<usize> {
+    fn pull_elements(&mut self, num_to_pull: usize) -> Vec<usize> {
         let mut prepend_block_elements = VecDeque::new();
         let mut insert_block_elements = VecDeque::new();
 
         // Consider some elements from the prepend list.
         for p_i in 0..self.prepend_blocks.len() {
             // Sort the nodes so we can take as many as needed.
-            let mut block_nodes = &mut self.prepend_blocks[p_i].nodes;
+            let block_nodes = &mut self.prepend_blocks[p_i].nodes;
             block_nodes.sort_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap());
             let num_to_take = num_to_pull.min(block_nodes.len());
             for i in 0..num_to_take {
@@ -278,7 +275,7 @@ impl BlockList {
         // Consider some elements from the insert list.
         for b_i in 0..self.insert_blocks.len() {
             // Sort the nodes so we can take as many as needed.
-            let mut block_nodes = &mut self.insert_blocks[b_i].nodes;
+            let block_nodes = &mut self.insert_blocks[b_i].nodes;
             block_nodes.sort_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap());
             let num_to_take = num_to_pull.min(block_nodes.len());
             for i in 0..num_to_take {
@@ -313,14 +310,14 @@ impl BlockList {
         pulled_elements
     }
 
-    pub fn pull(self: &mut Self) -> PullResult {
+    pub fn pull(&mut self) -> PullResult {
         let mut pulled_elements = Vec::new();
         let mut num_elements_pulled = 0;
         while num_elements_pulled < self.M {
             // Try to drain up to a number of elements
             let num_to_drain = self.M - num_elements_pulled;
             let mut nodes = self.pull_elements(num_to_drain);
-            if nodes.len() == 0 {
+            if nodes.is_empty() {
                 // We're done here.
                 break;
             }
