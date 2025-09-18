@@ -8,6 +8,7 @@ mod block_data_structure;
 mod bmssp;
 mod dijkstra;
 mod pq_block_list;
+mod tree_block_list;
 
 #[derive(Parser, Debug)]
 #[command(name = "ssps")]
