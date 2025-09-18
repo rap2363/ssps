@@ -1,7 +1,7 @@
 // BMSSSP (distance-only), implemented from
 // "Breaking the Sorting Barrier for Directed Single-Source Shortest Paths"
 // (Duan, Mao, Mao, Shu, Yin, April 2025) (arXiv:2504.17033v1)
-use crate::block_data_structure::{BlockList, PullResult};
+use crate::tree_block_list::{BlockList, PullResult};
 use hashbrown::{HashMap, HashSet};
 use std::cmp;
 use std::collections::BinaryHeap;
@@ -43,7 +43,7 @@ pub fn find_pivots(
     frontier: &[usize],
     k: usize,
     neighbors: &Vec<Vec<(usize, f64)>>,
-    min_cost_map: &mut Vec<f64>,
+    min_cost_map: &mut [f64],
 ) -> (Vec<usize>, Vec<usize>) {
     // Build out the "lookahead" layers in our search k-times forward from the frontier.
     let mut layers = Vec::new();
@@ -142,12 +142,12 @@ fn base_bmssp(
         visited_set.insert(node_id);
         u_init.push(node_id);
         max_cost_so_far = max_cost_so_far.max(min_cost_map[node_id]);
-        for (neighbor_node_id, weight) in &neighbors[node_id] {
+        for &(neighbor_node_id, weight) in neighbors[node_id].iter() {
             let cost_to_neighbor = cost + weight;
-            if cost_to_neighbor <= min_cost_map[*neighbor_node_id] && cost_to_neighbor < upper_bound
+            if cost_to_neighbor <= min_cost_map[neighbor_node_id] && cost_to_neighbor < upper_bound
             {
-                min_cost_map[*neighbor_node_id] = cost_to_neighbor;
-                heap.push(State::from(*neighbor_node_id, cost_to_neighbor));
+                min_cost_map[neighbor_node_id] = cost_to_neighbor;
+                heap.push(State::from(neighbor_node_id, cost_to_neighbor));
             }
         }
     }
@@ -174,7 +174,7 @@ fn base_bmssp(
 fn bmssp_bounded(
     l: usize,
     upper_bound: f64,
-    frontier: &Vec<usize>,
+    frontier: &[usize],
     k: usize,
     t: usize,
     neighbors: &Vec<Vec<(usize, f64)>>,
@@ -187,7 +187,6 @@ fn bmssp_bounded(
 
     let (pivots, layer_set) = find_pivots(upper_bound, frontier, k, neighbors, min_cost_map);
     let M = 2_usize.pow((t * (l - 1)).try_into().unwrap());
-    let max_size_u_set = k * 2_usize.pow((t * l).try_into().unwrap());
     let mut block_list = BlockList::new(M, upper_bound);
     // Add the pivots to the queue.
     let mut min_upper_bound = upper_bound;
@@ -205,7 +204,9 @@ fn bmssp_bounded(
         min_upper_bound = min_upper_bound.min(dist);
     }
 
-    let mut u_set = Vec::new();
+    let max_size_u_set = k * 2_usize.pow((t * l).try_into().unwrap());
+    let mut u_set = Vec::with_capacity(max_size_u_set);
+
     while u_set.len() < max_size_u_set && !block_list.is_empty() {
         let PullResult(new_frontier, current_upper_bound) = block_list.pull();
         let (new_upper_bound, new_uset) = bmssp_bounded(
@@ -218,21 +219,22 @@ fn bmssp_bounded(
             min_cost_map,
         );
         min_upper_bound = new_upper_bound;
-        let mut batch_prepend_elements = Vec::new();
+        let mut batch_prepend_elements = Vec::with_capacity(new_uset.len() + new_frontier.len());
         for &node_id in new_uset.iter() {
             u_set.push(node_id);
             let cost_to_node = min_cost_map[node_id];
-            for (neighbor_node_id, weight) in &neighbors[node_id] {
+            for &(neighbor_node_id, weight) in neighbors[node_id].iter() {
                 let proposed_weight = cost_to_node + weight;
-                if proposed_weight <= min_cost_map[*neighbor_node_id] {
-                    min_cost_map[*neighbor_node_id] = proposed_weight;
+                let neighbor_cost = &mut min_cost_map[neighbor_node_id];
+                if proposed_weight <= *neighbor_cost {
+                    *neighbor_cost = proposed_weight;
                     if current_upper_bound <= proposed_weight && proposed_weight < upper_bound {
-                        block_list.insert(*neighbor_node_id, proposed_weight)
+                        block_list.insert(neighbor_node_id, proposed_weight)
                     } else if new_upper_bound <= proposed_weight
                         && proposed_weight < current_upper_bound
                     {
                         // Element is cheaper than anything in the block_list currently, so we can batch prepend.
-                        batch_prepend_elements.push((*neighbor_node_id, proposed_weight));
+                        batch_prepend_elements.push((neighbor_node_id, proposed_weight));
                     }
                 }
             }

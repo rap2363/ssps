@@ -23,6 +23,18 @@ cargo run --release -- --pbf data/district-of-columbia-latest.osm.pbf --source 1
 cargo test
 ```
 
+## Format
+```bash
+cargo fmt
+```
+
+## Perf/Profiling
+Get flamegraph (cargo add flamegraph).
+```bash
+cargo build
+flamegraph -- target/debug/osm --pbf data/district-of-columbia-latest.osm.pbf --source 100 --out data/flamegraph.svg
+```
+
 ## Current Statistics
 Average Runtimes:
 
