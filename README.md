@@ -23,6 +23,11 @@ cargo run --release -- --pbf data/district-of-columbia-latest.osm.pbf --source 1
 cargo test
 ```
 
+## Format
+```bash
+cargo fmt
+```
+
 ## Current Statistics
 Average Runtimes:
 
