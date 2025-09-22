@@ -298,7 +298,7 @@ mod tests {
         neighbors[3] = vec![(6, 2.0)];
         neighbors[4] = vec![(6, 2.0)];
         neighbors[5] = vec![];
-        neighbors[6] = vec![(8, 3.0)];
+        neighbors[6] = vec![(8, 3.5)];
         neighbors[7] = vec![(9, 2.0)];
         neighbors[8] = vec![(10, 1.0)];
         neighbors[9] = vec![(10, 2.0)];
@@ -316,8 +316,8 @@ mod tests {
         assert_eq!(dist[5], 3.0);
         assert_eq!(dist[6], 4.0);
         assert_eq!(dist[7], 5.0);
-        assert_eq!(dist[8], 7.0);
+        assert_eq!(dist[8], 7.5);
         assert_eq!(dist[9], 7.0);
-        assert_eq!(dist[10], 8.0);
+        assert_eq!(dist[10], 8.5);
     }
 }
